@@ -1,20 +1,20 @@
-Notice: 
+# Notice: 
 
   ProBuilder is a Maya authoring tool for visualized procedural modeling. The tool uses: 
   
-  1. Nodz developed by LeGoffLoic:
+  ### 1. Nodz developed by LeGoffLoic:
   https://github.com/LeGoffLoic/Nodz
   
-  2. PyQt: 
+  ### 2. PyQt: 
   https://riverbankcomputing.com/software/pyqt/intro
   
-  3. NumPy:
+  ### 3. NumPy:
   http://www.numpy.org/
   
   We give thanks to all of them for their contributions! 
   
 
-To run the program:
+# To run the program:
 
   1. Open up Maya 2017
   
