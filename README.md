@@ -1,10 +1,30 @@
-To run the program, open up Maya 2017, open up the Script Editor, and paste the following Python code and run.
-Replace the Probuilder path with the path to wherever you downloaded this repo.
+Notice: 
 
-```python
-import maya.cmds as cmds
+  ProBuilder is a Maya authoring tool for visualized procedural modeling. The tool uses: 
+  
+  1. Nodz developed by LeGoffLoic:
+  https://github.com/LeGoffLoic/Nodz
+  
+  2. PyQt: 
+  https://riverbankcomputing.com/software/pyqt/intro
+  
+  3. NumPy:
+  http://www.numpy.org/
+  
+  We give thanks to all of them for their contributions! 
+  
 
-cmds.unloadPlugin('ProBuilder')
-cmds.loadPlugin('/Users/ishan/Documents/UniversityOfPennsylvania/UniversityOfPennsylvania/Spring2018/CIS660/ProBuilder/ProBuilder.py')
+To run the program:
 
-```
+  1. Open up Maya 2017
+  
+  2. Open up the Script Editor
+  
+  3. Modify the path in init.py into the path where you put your ProBuilder into.
+  
+  4. Drag the init.py into the editor
+  
+  5. Click ExecuteAll, and enjoy!  
+  
+
+
