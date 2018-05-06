@@ -29,6 +29,7 @@ class Nodz(QtWidgets.QGraphicsView):
     signal_AttrCreated = QtCore.Signal(object, object)
     signal_AttrDeleted = QtCore.Signal(object, object)
     signal_AttrEdited = QtCore.Signal(object, object, object)
+    signal_AttrSelected = QtCore.Signal(object, object)
 
     signal_PlugConnected = QtCore.Signal(object, object, object, object)
     signal_PlugDisconnected = QtCore.Signal(object, object, object, object)
@@ -43,7 +44,7 @@ class Nodz(QtWidgets.QGraphicsView):
     signal_KeyPressed = QtCore.Signal(object)
     signal_Dropped = QtCore.Signal()
 
-    def __init__(self, parent, configPath=defaultConfigPath):
+    def __init__(self, parent, controller, configPath=defaultConfigPath):
         """
         Initialize the graphics view.
 
@@ -52,6 +53,8 @@ class Nodz(QtWidgets.QGraphicsView):
 
         # Load nodz configuration.
         self.loadConfig(configPath)
+
+        self.controller = controller
 
         # General data.
         self.gridVisToggle = True
@@ -68,6 +71,9 @@ class Nodz(QtWidgets.QGraphicsView):
         self.currentState = 'DEFAULT'
         self.pressedKeys = list()
 
+        # Zoom
+        self.zoomValue = 1.0
+
     def wheelEvent(self, event):
         """
         Zoom in the view with the mouse wheel.
@@ -83,6 +89,8 @@ class Nodz(QtWidgets.QGraphicsView):
             zoomFactor = inFactor
         else:
             zoomFactor = outFactor
+
+        self.zoomValue *= zoomFactor
 
         self.scale(zoomFactor, zoomFactor)
         self.currentState = 'DEFAULT'
@@ -292,6 +300,7 @@ class Nodz(QtWidgets.QGraphicsView):
             self.pressedKeys.append(event.key())
 
         if event.key() == QtCore.Qt.Key_Delete:
+            self.controller.deleteNode()
             self._deleteSelectedNodes()
 
         if event.key() == QtCore.Qt.Key_F:
@@ -421,8 +430,28 @@ class Nodz(QtWidgets.QGraphicsView):
                 selected_nodes.append(node)
 
         # Emit signal.
+        if len(selected_nodes) == 1:
+            # If only one attribute in this node then directly emit
+            if selected_nodes[0].attrCount <= 1:
+                self.signal_NodeSelected.emit(selected_nodes[0])
+            
+            # Otherwise find which attribute was selected and emit node and attribute number from top
+            pointerPos = self.mapFromGlobal(QtGui.QCursor.pos())
 
-        self.signal_NodeSelected.emit(selected_nodes[0] if len(selected_nodes) > 0 else None)
+            nodeTopLeft = self.viewport().mapToParent(self.mapFromScene(selected_nodes[0].mapToScene(selected_nodes[0].boundingRect().topLeft())))
+            nodeBottomLeft = self.viewport().mapToParent(self.mapFromScene(selected_nodes[0].mapToScene(selected_nodes[0].boundingRect().bottomLeft())))
+
+            borderDist = (selected_nodes[0].baseHeight - selected_nodes[0].radius) * self.zoomValue
+            if pointerPos.y() > nodeTopLeft.y() + borderDist * self.zoomValue:
+                if pointerPos.y() < nodeBottomLeft.y() - borderDist - selected_nodes[0].attrHeight * self.zoomValue:
+                    attrNumFromTop = (pointerPos.y() - nodeTopLeft.y() - borderDist) / (selected_nodes[0].attrHeight * self.zoomValue)
+                    self.signal_AttrSelected.emit(selected_nodes[0], min(selected_nodes[0].attrCount - 1, max(0, int(attrNumFromTop))))
+                    return
+
+            # If the "Node" attribute was selected then just emit the node
+            self.signal_NodeSelected.emit(selected_nodes[0])
+        else:
+            self.signal_NodeSelected.emit(None)
 
 
     ##################################################################
@@ -1102,22 +1131,23 @@ class NodeItem(QtWidgets.QGraphicsItem):
         in the process
 
         """
-        self.scene().nodes.remove(self)
+        if self.scene() is not None:
+            self.scene().nodes.remove(self)
 
-        # Remove all sockets connections.
-        for socket in self.sockets.values():
-            while len(socket.connections)>0:
-                socket.connections[0]._remove()
+            # Remove all sockets connections.
+            for socket in self.sockets.values():
+                while len(socket.connections)>0:
+                    socket.connections[0]._remove()
 
-        # Remove all plugs connections.
-        for plug in self.plugs.values():
-            while len(plug.connections)>0:
-                plug.connections[0]._remove()
+            # Remove all plugs connections.
+            for plug in self.plugs.values():
+                while len(plug.connections)>0:
+                    plug.connections[0]._remove()
 
-        # Remove node.
-        scene = self.scene()
-        scene.removeItem(self)
-        scene.update()
+            # Remove node.
+            scene = self.scene()
+            scene.removeItem(self)
+            scene.update()
 
     def boundingRect(self):
         """
@@ -1659,8 +1689,9 @@ class SocketItem(SlotItem):
 
         """
         if isinstance(plug_item, PlugItem):
+            #NEW2 Allow multiple input!
             if (self.parentItem() != plug_item.parentItem() and
-                len(self.connected_slots) <= 1):
+                len(self.connected_slots) <= 100):
                 if plug_item.dataType == self.dataType:
                     if plug_item in self.connected_slots:
                         return False
